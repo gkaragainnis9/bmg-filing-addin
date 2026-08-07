@@ -1,18 +1,23 @@
 /*
- * BM+G Filing Auto-CC v2
+ * BM+G Filing Auto-CC v3
  * iBNS - adds filing@bmplusg.com.au to CC on every new compose,
  * reply, reply-all and forward. Skips if already present.
- * Code kept to ES2016-and-earlier per Microsoft guidance for
- * event-based add-ins (no async/await, no ternary operators).
+ * ES2016-and-earlier syntax only (event add-in runtime constraint).
+ * v3: unconditional Office.actions.associate (matches Microsoft's
+ * autolaunch walkthrough sample) + console breadcrumbs.
  */
 
 var FILING_ADDRESS = "filing@bmplusg.com.au";
 var FILING_DISPLAY = "BM+G Filing";
 
+console.log("[FilingCC] commands.js loaded");
+
 function onNewMessageComposeHandler(event) {
+  console.log("[FilingCC] handler invoked");
   var item = Office.context.mailbox.item;
 
   item.cc.getAsync(function (result) {
+    console.log("[FilingCC] cc.getAsync status: " + result.status);
     var alreadyPresent = false;
     var i;
     var addr;
@@ -28,25 +33,24 @@ function onNewMessageComposeHandler(event) {
     }
 
     if (alreadyPresent) {
+      console.log("[FilingCC] filing address already in CC, skipping");
       event.completed();
       return;
     }
 
     item.cc.addAsync(
       [{ displayName: FILING_DISPLAY, emailAddress: FILING_ADDRESS }],
-      function () {
+      function (addResult) {
+        console.log("[FilingCC] cc.addAsync status: " + addResult.status);
         event.completed();
       }
     );
   });
 }
 
-/*
- * Per Microsoft troubleshooting guidance for event-based add-ins:
- * classic Outlook on Windows requires Office.actions.associate to map
- * the manifest FunctionName to the handler. Gate by platform.
- * On the web/new Outlook the handler is resolved by its global name.
- */
-if (Office.context && (Office.context.platform === Office.PlatformType.PC || Office.context.platform == null)) {
+try {
   Office.actions.associate("onNewMessageComposeHandler", onNewMessageComposeHandler);
+  console.log("[FilingCC] handler associated");
+} catch (e) {
+  console.log("[FilingCC] associate failed: " + e.message);
 }
