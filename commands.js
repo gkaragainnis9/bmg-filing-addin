@@ -1,7 +1,9 @@
 /*
- * BM+G Filing Auto-CC
+ * BM+G Filing Auto-CC v2
  * iBNS - adds filing@bmplusg.com.au to CC on every new compose,
  * reply, reply-all and forward. Skips if already present.
+ * Code kept to ES2016-and-earlier per Microsoft guidance for
+ * event-based add-ins (no async/await, no ternary operators).
  */
 
 var FILING_ADDRESS = "filing@bmplusg.com.au";
@@ -12,10 +14,12 @@ function onNewMessageComposeHandler(event) {
 
   item.cc.getAsync(function (result) {
     var alreadyPresent = false;
+    var i;
+    var addr;
 
     if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-      for (var i = 0; i < result.value.length; i++) {
-        var addr = (result.value[i].emailAddress || "").toLowerCase();
+      for (i = 0; i < result.value.length; i++) {
+        addr = (result.value[i].emailAddress || "").toLowerCase();
         if (addr === FILING_ADDRESS) {
           alreadyPresent = true;
           break;
@@ -37,6 +41,12 @@ function onNewMessageComposeHandler(event) {
   });
 }
 
-// Required for classic Outlook on Windows (JavaScript-only runtime)
-// and for OWA / new Outlook (browser runtime via commands.html).
-Office.actions.associate("onNewMessageComposeHandler", onNewMessageComposeHandler);
+/*
+ * Per Microsoft troubleshooting guidance for event-based add-ins:
+ * classic Outlook on Windows requires Office.actions.associate to map
+ * the manifest FunctionName to the handler. Gate by platform.
+ * On the web/new Outlook the handler is resolved by its global name.
+ */
+if (Office.context && (Office.context.platform === Office.PlatformType.PC || Office.context.platform == null)) {
+  Office.actions.associate("onNewMessageComposeHandler", onNewMessageComposeHandler);
+}
