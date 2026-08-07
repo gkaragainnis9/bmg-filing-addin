@@ -1,16 +1,29 @@
 /*
- * BM+G Filing Auto-CC v3
+ * BM+G Filing Auto-CC v4
  * iBNS - adds filing@bmplusg.com.au to CC on every new compose,
  * reply, reply-all and forward. Skips if already present.
- * ES2016-and-earlier syntax only (event add-in runtime constraint).
- * v3: unconditional Office.actions.associate (matches Microsoft's
- * autolaunch walkthrough sample) + console breadcrumbs.
+ * ES2016-and-earlier syntax only.
+ * v4: visible notification banner in the compose window as proof of
+ * execution (works without DevTools), plus console breadcrumbs.
  */
 
 var FILING_ADDRESS = "filing@bmplusg.com.au";
 var FILING_DISPLAY = "BM+G Filing";
 
-console.log("[FilingCC] commands.js loaded");
+console.log("[FilingCC] commands.js v4 loaded");
+
+function notify(text) {
+  try {
+    Office.context.mailbox.item.notificationMessages.replaceAsync("filingcc", {
+      type: "informationalMessage",
+      message: text,
+      icon: "Icon.16x16",
+      persistent: false
+    });
+  } catch (e) {
+    console.log("[FilingCC] notify failed: " + e.message);
+  }
+}
 
 function onNewMessageComposeHandler(event) {
   console.log("[FilingCC] handler invoked");
@@ -34,6 +47,7 @@ function onNewMessageComposeHandler(event) {
 
     if (alreadyPresent) {
       console.log("[FilingCC] filing address already in CC, skipping");
+      notify("Filing CC already present.");
       event.completed();
       return;
     }
@@ -42,6 +56,7 @@ function onNewMessageComposeHandler(event) {
       [{ displayName: FILING_DISPLAY, emailAddress: FILING_ADDRESS }],
       function (addResult) {
         console.log("[FilingCC] cc.addAsync status: " + addResult.status);
+        notify("filing@bmplusg.com.au added to CC. Remove it if this email should not be filed.");
         event.completed();
       }
     );
